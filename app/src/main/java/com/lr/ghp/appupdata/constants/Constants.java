@@ -10,11 +10,11 @@ import java.io.File;
  */
 public class Constants {
     //用于测试的packageName
-    public static final String TEST_PACKAGENAME = "com.sina.appupdata";
+    public static final String TEST_PACKAGENAME = "com.lr.ghp.appupdata";
 
     public static final String PATH = Environment.getExternalStorageDirectory() + File.separator;
 
-    //合成得到的新版微博
+    //合成得到的新版app
     public static final String NEW_APK_PATH = PATH + "appOldtoNew.apk";
 
     //从服务器下载来的查分包
