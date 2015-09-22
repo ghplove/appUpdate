@@ -39,6 +39,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
     private void initView(){
         start_btn.setOnClickListener(this);
+        mProgressDialog=new ProgressDialog(this);
         mProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         mProgressDialog.setMessage("doing..");
         mProgressDialog.setCancelable(false);
