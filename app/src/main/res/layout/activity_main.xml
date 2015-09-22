@@ -54,7 +54,7 @@
         android:text="@string/demo_github" />
 
     <TextView
-        android:id="@+id/textview4"
+        android:id="@+id/resultTxt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 </LinearLayout>
