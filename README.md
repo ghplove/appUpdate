@@ -80,19 +80,21 @@
 &nbsp;&nbsp;&nbsp;&nbsp;另外，如果你的应用程序不是很大，比如只有2、3M，那么完全没有必要使用增量更新，增量更新只适用于apk包比较大的情况，比如手机游戏客户端。  
 <br>
 <br>
- > 注：  
-安装bsdiff  
-1. Press Command+F and type Terminal and press enter/return key.
-2. Run in Terminal app:
-<hr>
-**ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null**
-<hr>
-and press enter/return key. Wait for the command to finish.
-3. Run: 
-<hr> 
-**brew install bsdiff**  
-<hr>
-Done! You can now use bsdiff.
+
+
+> 注：  
+> 安装bsdiff  
+> 1. Press Command+F and type Terminal and press enter/return key.
+> 2. Run in Terminal app:
+> <hr>
+> **ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null**
+> <hr>
+> and press enter/return key. Wait for the command to finish.
+> 3. Run: 
+> <hr> 
+> **brew install bsdiff**  
+> <hr>
+> Done! You can now use bsdiff.
 
 
   
