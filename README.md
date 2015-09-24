@@ -94,7 +94,9 @@
 > <hr> 
 > **brew install bsdiff**  
 > <hr>
-> Done! You can now use bsdiff.
+> Done! You can now use bsdiff.  
+  
+  
 <br><br>
 > 注意（ghp）  
 > 找不到ApkPatchLibrary时，在build.gradl添加：  
