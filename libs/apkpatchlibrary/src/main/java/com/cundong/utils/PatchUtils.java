@@ -1,4 +1,4 @@
-package com.lr.ghp.utils;
+package com.cundong.utils;
 
 /**
  * 类说明： 	APK Patch工具类

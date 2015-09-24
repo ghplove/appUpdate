@@ -17,6 +17,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    productFlavors{
+        sourceSets{
+            main{
+                jniLibs.srcDirs=['libs']
+            }
+        }
+    }
 }
 
 dependencies {
@@ -25,3 +32,4 @@ dependencies {
     compile project(':libs:apkpatchlibrary')
     compile files('libs/butterknife-5.0.0.jar')
 }
+
