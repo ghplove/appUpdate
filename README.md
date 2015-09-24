@@ -96,6 +96,14 @@
 > <hr>
 > Done! You can now use bsdiff.
 
-
+> 注意（ghp）
+> 找不到ApkPatchLibrary时，在build.gradl添加：
+> sourceSets {
+> main {
+> jniLibs.srcDirs = ['libs']
+> }
+> }
+> 使用demo中的.so文件，路径名需要一致，使用OK，但最终会签名不一致
+  
   
   
