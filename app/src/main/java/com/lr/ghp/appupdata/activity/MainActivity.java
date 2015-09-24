@@ -49,13 +49,17 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         switch (v.getId()){
             case R.id.start_btn:
                 File patchFile = new File(Constants.PATCH_PATH);
+                patchFile.setReadable(true);
+                patchFile.setWritable(true);
                 if (!ApkUtils.isInstalled(mContext, Constants.TEST_PACKAGENAME)) {
                     Toast.makeText(mContext, getString(R.string.demo_info1),
                             Toast.LENGTH_LONG).show();
-                } else if (!patchFile.exists()) {
+                }
+                else if (!patchFile.exists()) {
                     Toast.makeText(mContext, getString(R.string.demo_info2),
                             Toast.LENGTH_LONG).show();
-                } else {
+                }
+                else {
                     PatchApkTask patchApkTask=new PatchApkTask(MainActivity.this,mProgressDialog,resultTxt);
                     patchApkTask.execute();
                 }
@@ -63,5 +67,8 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             default:
                 break;
         }
+    }
+    static {
+        System.loadLibrary("ApkPatchLibrary");
     }
 }

@@ -7,9 +7,9 @@ import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.cundong.utils.PatchUtils;
 import com.lr.ghp.appupdata.constants.Constants;
 import com.lr.ghp.appupdata.constants.StatusConstants;
-import com.lr.ghp.utils.PatchUtils;
 
 /**
  * Created by ghp on 15/9/22.
@@ -106,11 +106,6 @@ public class PatchApkTask extends AsyncTask<String, Void, Integer> {
         }
     }
     private void showShortToast(final String text) {
-
         Toast.makeText(mContext, text, Toast.LENGTH_SHORT).show();
-    }
-
-    static {
-        System.loadLibrary("ApkPatchLibrary");
     }
 }

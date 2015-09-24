@@ -17,6 +17,23 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    //签名
+    signingConfigs {
+        //自己的keystore信息
+        release {
+            storeFile file("../appupdatekey")
+            storePassword "ghp512418"
+            keyAlias "appupdate"
+            keyPassword "ghp418512"
+        }
+    }
+    productFlavors{
+        sourceSets{
+            main{
+                jniLibs.srcDirs=['libs']
+            }
+        }
+    }
 }
 
 dependencies {
@@ -25,3 +42,4 @@ dependencies {
     compile project(':libs:apkpatchlibrary')
     compile files('libs/butterknife-5.0.0.jar')
 }
+

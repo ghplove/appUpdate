@@ -12,11 +12,12 @@ public class Constants {
     //用于测试的packageName
     public static final String TEST_PACKAGENAME = "com.lr.ghp.appupdata";
 
-    public static final String PATH = Environment.getExternalStorageDirectory() + File.separator;
+    public static final String PATH = Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
 
     //合成得到的新版app
-    public static final String NEW_APK_PATH = PATH + "appOldtoNew.apk";
+    public static final String NEW_APK_PATH = PATH + "/appOldtoNew.apk";
 
     //从服务器下载来的查分包
-    public static final String PATCH_PATH = PATH + "app.patch";
+    public static final String PATCH_PATH = PATH + "/app.patch";
 }
