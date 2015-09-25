@@ -10,8 +10,19 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    //签名
+    signingConfigs {
+        //自己的keystore信息
+        release {
+            storeFile file("../appupdatekey.jks")
+            storePassword "ghp418512"
+            keyAlias "appupdate"
+            keyPassword "ghp512418"
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
