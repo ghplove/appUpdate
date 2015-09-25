@@ -1,111 +1,355 @@
-# appUpdate
-增量更新
-<h3>增量升级原理：</h3>
+# Android应用增量更新 - Smart App Updates
 
-&nbsp;&nbsp;&nbsp;&nbsp;先上传一个apk作为最初的文件，比如说叫版本1，然后每次发布新版本的时候生成一个版本，叫做版本2。<br>
-&nbsp;&nbsp;&nbsp;&nbsp;需要在服务器端做一步操作，让版本2和版本1进行比对，生成一个patch文件，这个patch文件就是你需要的增量升级的东西了。<br>
+------
 
-&nbsp;&nbsp;&nbsp;&nbsp;**有2步操作比较重要**<br>
+## 介绍
 
-1. patch文件你要很清楚的记录是哪两个版本之间的比较<br>
-2. patch文件的生成需要用到NDK，就是需要写c代码，然后编译生成.so文件，集成到你的项目里<br>
 
-&nbsp;&nbsp;&nbsp;&nbsp;第一点，以后每发布一个新版本，就需要进行比对，不是只比对一次，而是以前有多少个版本，就要拿这个新版本和以前的全部对比一次。因为不知道用户下载的是哪一个版本，那么就需要对以前的每一个版本都进行一次对比，这样用户在进行增量升级的时候，才会知道需要下载哪一个patch文件。<br>
+包括客户端、服务端两部分代码。
 
-&nbsp;&nbsp;&nbsp;&nbsp;第二点，关键是要配置NDK环境<br>
+## 原理
 
-&nbsp;&nbsp;&nbsp;&nbsp;**同时需要考虑的两点：**<br>
+自从 Android 4.1 开始， [Google Play 引入了应用程序的增量更新功能][1]，App使用该升级方式，可节省约2/3的流量。
 
-&nbsp;&nbsp;&nbsp;&nbsp;数据库容量要够，每生成一个patch文件，就要记录一条，是哪两个版本之间的。<br>
+> Smart app updates is a new feature of Google Play that introduces a
+> better way of delivering app updates to devices. When developers
+> publish an update, Google Play now delivers only the bits that have
+> changed to devices, rather than the entire APK. This makes the updates
+> much lighter-weight in most cases, so they are faster to download,
+> save the device’s battery, and conserve bandwidth usage on users’
+> mobile data plan. On average, a smart app update is about 1/3 the
+> sizeof a full APK update.
 
-&nbsp;&nbsp;&nbsp;&nbsp;服务器容量也要够，因为以后会发现patch文件会很多，另外每一个版本的apk文件也要保留着，因为如果是第一次下载的话还是需要的。<br>
-<br><br>
-### 增量升级优缺点  
-  
-**优点：**  
-增量包减少流量损耗，尤其是非WiFi下  
+现在国内主流的应用市场也都支持应用的增量更新了。
 
-**缺点：**  
-增量升级并非完美无缺的升级方式，至少存在以下两点不足： 
- 
-1. 增量升级是以两个应用版本之间的差异来生成补丁的，我们无法保证用户每次的及时升级到最新，所以必须对所发布的每一个版本都和最新的版本作差分，以便使所有版本的用户都可以差分升级，这样操作相对于原来的整包升级较为繁琐，不过可以通过自动化的脚本批量生成。  
-2. 增量升级成功的前提是，用户手机端必须有能够拷贝出来且与服务器用于差分的版本一致的apk，这样就存在，例如，系统内置的apk无法获取到，无法进行增量升级；对于某些与差分版本一致，但是内容有过修改的(比如破解版apk)，这样也是无法进行增量升级的，为了防止合成补丁错误，最好在补丁合成前对旧版本的apk进行sha1sum校验，保证基础包的一致性。
-<br><br>
-### 增量升级操作  
+增量更新的原理非常简单，就是将手机上已安装apk与服务器端最新apk进行二进制对比，并得到差分包，用户更新程序时，只需要下载差分包，并在本地使用差分包与已安装apk，合成新版apk。
 
-#### 操作总的来说分3步：
-> * 在服务器端，生成这两个版本的差分包；  
-> * 在手机客户端，使用已安装的旧版apk与这个差分包，合成为一个新版apk；  
-> * 校验新合成的微博客户端文件是否完整，签名时候和已安装客户端一致，如一致，提示用户安装；
+例如，当前手机中已安装微博V1，大小为12.8MB，现在微博发布了最新版V2，大小为15.4MB，我们对两个版本的apk文件差分比对之后，发现差异只有3M，那么用户就只需要要下载一个3M的差分包，使用旧版apk与这个差分包，合成得到一个新版本apk，提醒用户安装即可，不需要整包下载15.4M的微博V2版apk。
 
-#### 过程分析：  
-* **1. 生成差分包**  
+apk文件的差分、合成，可以通过 [开源的二进制比较工具 bsdiff][2] 来实现
 
-&nbsp;&nbsp;&nbsp;&nbsp;生成差分包这一步需要在服务器端来实现，一般来说，每当apk有新版本需要提示用户升级，都需要运营人员在后台管理端上传新apk，上传时就应该由程序生成之前所有旧版本们与最新版的差分包。  
-<br>  
-例如：  
-&nbsp;&nbsp;&nbsp;&nbsp;apk已经发布了3个版，V1.0、V2.0、V3.0，这时候你要在后台发布V4.0，那么，当你在服务器上传最新的V4.0包时，服务器端就应该立即生成以下差分包：
+因为bsdiff依赖bzip2，所以我们还需要用到 [bzip2][3]
+
+bsdiff中，`bsdiff.c`用于生成差分包，`bspatch.c`用于合成文件。 
+
+接下来，我们分开说，需要做3件事。
+
+* 在服务器端，生成这两个版本微博的差分包； 
+
+* 在手机客户端，使用已安装的旧版apk与这个差分包，合成为一个新版微博apk； 
+
+* 校验新合成的微博客户端文件是否完整，签名时候和已安装客户端一致，如一致，提示用户安装；
+
+## 过程分析
+
+### 1 生成差分包
+
+这一步需要在服务器端来实现，一般来说，每当apk有新版本需要提示用户升级，都需要运营人员在后台管理端上传新apk，上传时就应该由程序生成之前所有旧版本们与最新版的差分包。 
+
+例如：
+你的apk已经发布了3个版，V1.0、V2.0、V3.0，这时候你要在后台发布V4.0，那么，当你在服务器上传最新的V4.0包时，服务器端就应该立即生成以下差分包：
 
  1. V1.0 ——> V4.0的差分包；
  2. V2.0 ——> V4.0的差分包；
- 3. V3.0 ——> V4.0的差分包；  
+ 3. V3.0 ——> V4.0的差分包；
 
-&nbsp;&nbsp;&nbsp;&nbsp;对比的过程：  有一个文件叫bsdiff，bsdiff是二进制差分工具, 用来生成patch文件的，在程序里调它。这个patch叫做差分包。就用这个bsdiff工具，它可以生成patch。  
+ApkPatchLibraryServer工程即为Java语言实现的服务器端差分程序。
 
-<hr>
- > 命令：bsdiff oldfile newfile patchfile    
- > 例如: bsdiff xx_v1.0.apk xx_v2.0.apk xx.patch  
-  
-<hr> 
-&nbsp;&nbsp;&nbsp;&nbsp;大致流程如,制作补丁时调用bsdiff函数，根据两个不同版本的二进制文件，生成补丁文件。 将生成的补丁包 xx.patch放置在升级服务器上，供用户下载升级，对应多版本需要对不同的版本进行差分，对于版本跨度较大的，建议整包升级。  
-<br>
-* **2.使用旧版apk与差分包，在客户端合成新apk**   
+下面对ApkPatchLibraryServer做一些简单说明：
 
-&nbsp;&nbsp;&nbsp;&nbsp;使用旧版apk与差分包，需要在手机客户端合成新apk。  
-&nbsp;&nbsp;&nbsp;&nbsp;其对应的bspatch是相应的补丁合成工具，可以将patch和apk合成。系统旧版本的apk可以通过copy系统data/app目录下的apk文件获取。  
-&nbsp;&nbsp;&nbsp;&nbsp;在android程序里面也要有一段代码，在下载完patch以后，调用bspatch进行合成apk，和差分时的参数一样，即可合成新的apk。  
-<hr>
- > bspatch的命令格式为：    
- > bspatch oldfile newfile patchfile  
-  
-<hr>
-* **3.校验新合成的apk文件**  
+#### 1.1 C部分
 
-&nbsp;&nbsp;&nbsp;&nbsp;新包和成之后，还需要对客户端合成的apk包与最新版本apk包进行MD5或SHA1校验，如果校验码不一致，说明合成过程有问题，新合成的包将不能被安装。  
-<br>
-<br>
+ApkPatchLibraryServer/jni 中，除了以下4个：
 
-* **注意事项**  
-&nbsp;&nbsp;&nbsp;&nbsp;增量更新的前提条件，是在手机客户端能让我们读取到当前应用程序安装后的源apk，如果获取不到源apk，那么就无法进行增量更新了。
-&nbsp;&nbsp;&nbsp;&nbsp;另外，如果你的应用程序不是很大，比如只有2、3M，那么完全没有必要使用增量更新，增量更新只适用于apk包比较大的情况，比如手机游戏客户端。  
-<br>
-<br>
+>com_cundong_utils_DiffUtils.c
 
+>com_cundong_utils_DiffUtils.h
 
-> 注：  
-> 安装bsdiff  
-> 1. Press Command+F and type Terminal and press enter/return key.
-> 2. Run in Terminal app:
-> <hr>
-> **ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null**
-> <hr>
-> and press enter/return key. Wait for the command to finish.
-> 3. Run: 
-> <hr> 
-> **brew install bsdiff**  
-> <hr>
-> Done! You can now use bsdiff.  
-  
-  
-<br><br>
-> 注意（ghp）  
-> 找不到ApkPatchLibrary时，在build.gradl添加：  
-> sourceSets {  
-> main {  
-> jniLibs.srcDirs = ['libs']  
-> }  
-> }  
-> 使用demo中的.so文件，路径名需要一致，使用OK，但最终会签名不一致  
-  
-  
-  
+>com_cundong_utils_PatchUtils.c
+
+>com_cundong_utils_PatchUtils.h
+
+jni/bzip2目录中的文件，全部来自bzip2项目。
+
+>com_cundong_utils_DiffUtils.c
+
+>com_cundong_utils_DiffUtils.h
+
+用于生成差分包。
+
+>com_cundong_utils_PatchUtils.c
+
+>com_cundong_utils_PatchUtils.h
+
+用于合成新apk文件。
+
+`com_cundong_utils_DiffUtils.c` 修改自 `bsdiff/bsdiff.c`，`com_cundong_utils_PatchUtils.c`修改自`bsdiff/bspatch.c`。
+
+我们在需要将jni中的C文件，build输出为动态链接库，以供Java调用（Window环境下生成的文件名为libApkPatchLibraryServer.dll，Unix-like系统下为libApkPatchLibraryServer.so，OSX下为libApkPatchLibraryServer.dylib）。
+
+Build成功后，将该动态链接库文件，加入环境变量，供Java语言调用。
+
+`com_cundong_utils_DiffUtils.c` 中 `Java_com_cundong_utils_DiffUtils_genDiff()` 方法，用于生成差分包的：
+
+```C
+
+JNIEXPORT jint JNICALL Java_com_cundong_utils_DiffUtils_genDiff(JNIEnv *env,
+		jclass cls, jstring old, jstring new, jstring patch) {
+	int argc = 4;
+	char * argv[argc];
+	argv[0] = "bsdiff";
+	argv[1] = (char*) ((*env)->GetStringUTFChars(env, old, 0));
+	argv[2] = (char*) ((*env)->GetStringUTFChars(env, new, 0));
+	argv[3] = (char*) ((*env)->GetStringUTFChars(env, patch, 0));
+
+	printf("old apk = %s \n", argv[1]);
+	printf("new apk = %s \n", argv[2]);
+	printf("patch = %s \n", argv[3]);
+
+	int ret = genpatch(argc, argv);
+
+	printf("genDiff result = %d ", ret);
+
+	(*env)->ReleaseStringUTFChars(env, old, argv[1]);
+	(*env)->ReleaseStringUTFChars(env, new, argv[2]);
+	(*env)->ReleaseStringUTFChars(env, patch, argv[3]);
+
+	return ret;
+}
+
+```
+`com_cundong_utils_PatchUtils.c` 中 `Java_com_cundong_utils_PatchUtils_patch()` 方法，用于合成新的APK；
+
+```C
+JNIEXPORT jint JNICALL Java_com_cundong_utils_PatchUtils_patch
+  (JNIEnv *env, jclass cls,
+			jstring old, jstring new, jstring patch){
+	int argc = 4;
+	char * argv[argc];
+	argv[0] = "bspatch";
+	argv[1] = (char*) ((*env)->GetStringUTFChars(env, old, 0));
+	argv[2] = (char*) ((*env)->GetStringUTFChars(env, new, 0));
+	argv[3] = (char*) ((*env)->GetStringUTFChars(env, patch, 0));
+
+	printf("old apk = %s \n", argv[1]);
+	printf("patch = %s \n", argv[3]);
+	printf("new apk = %s \n", argv[2]);
+
+	int ret = applypatch(argc, argv);
+
+	printf("patch result = %d ", ret);
+
+	(*env)->ReleaseStringUTFChars(env, old, argv[1]);
+	(*env)->ReleaseStringUTFChars(env, new, argv[2]);
+	(*env)->ReleaseStringUTFChars(env, patch, argv[3]);
+	return ret;
+}
+```
+
+#### 1.2 Java部分
+
+com.cundong.utils包，为调用C语言的Java实现；
+com.cundong.apkdiff包，为apk差分程序的Demo；
+com.cundong.apkpatch包，为apk合并程序的Demo；
+
+调用，`com.cundong.utils.DiffUtils`中`genDiff()`方法，可以通过传入的新旧apk路径，得到差分包。 
+
+```java
+/**
+ * 类说明： 	APK Diff工具类
+ * 
+ * @author 	Cundong
+ * @date 	2013-9-6
+ * @version 1.0
+ */
+public class DiffUtils {
+
+	/**
+	 * native方法 比较路径为oldPath的apk与newPath的apk之间差异，并生成patch包，存储于patchPath
+	 * 
+	 * 返回：0，说明操作成功
+	 *  
+	 * @param oldApkPath 示例:/sdcard/old.apk
+	 * @param newApkPath 示例:/sdcard/new.apk
+	 * @param patchPath  示例:/sdcard/xx.patch
+	 * @return
+	 */
+	public static native int genDiff(String oldApkPath, String newApkPath, String patchPath);
+}
+```
+
+调用，`com.cundong.utils.PatchUtils`中`patch()`方法，可以通过旧apk与差分包，合成为新apk。
+
+```java
+/**
+ * 类说明： 	APK Patch工具类
+ * 
+ * @author 	Cundong
+ * @date 	2013-9-6
+ * @version 1.0
+ */
+public class PatchUtils {
+
+	/**
+	 * native方法 使用路径为oldApkPath的apk与路径为patchPath的补丁包，合成新的apk，并存储于newApkPath
+	 * 
+	 * 返回：0，说明操作成功
+	 * 
+	 * @param oldApkPath 示例:/sdcard/old.apk
+	 * @param newApkPath 示例:/sdcard/new.apk
+	 * @param patchPath  示例:/sdcard/xx.patch
+	 * @return
+	 */
+	public static native int patch(String oldApkPath, String newApkPath,
+			String patchPath);
+}
+```
+
+### 2.使用旧版apk与差分包，在客户端合成新apk
+
+需要在手机客户端实现，ApkPatchLibrary工程封装了这个过程。
+
+#### 2.1 C部分
+同ApkPatchLibraryServer工程一样，ApkPatchLibrary/jni/bzip2 目录中所有文件都来自bzip2项目。
+
+`ApkPatchLibrary/jni/com_cundong_utils_PatchUtils.c`、`ApkPatchLibrary/jni/com_cundong_utils_PatchUtils.c`实现文件的合并过程，其中`com_cundong_utils_PatchUtils.c`修改自`bsdiff/bspatch.c`。
+
+我们需要用NDK编译出一个libApkPatchLibrary.so文件，生成的so文件位于libs/armeabi/ 下，其他 Android 工程便可以使用该libApkPatchLibrary.so文件来合成apk。
+
+`com_cundong_utils_PatchUtils.Java_com_cundong_utils_PatchUtils_patch()`方法，即为生成差分包的代码：
+
+```C
+/*
+ * Class:     com_cundong_utils_PatchUtils
+ * Method:    patch
+ * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_cundong_utils_PatchUtils_patch(JNIEnv *env,
+		jobject obj, jstring old, jstring new, jstring patch) {
+
+	char * ch[4];
+	ch[0] = "bspatch";
+	ch[1] = (char*) ((*env)->GetStringUTFChars(env, old, 0));
+	ch[2] = (char*) ((*env)->GetStringUTFChars(env, new, 0));
+	ch[3] = (char*) ((*env)->GetStringUTFChars(env, patch, 0));
+
+	__android_log_print(ANDROID_LOG_INFO, "ApkPatchLibrary", "old = %s ", ch[1]);
+	__android_log_print(ANDROID_LOG_INFO, "ApkPatchLibrary", "new = %s ", ch[2]);
+	__android_log_print(ANDROID_LOG_INFO, "ApkPatchLibrary", "patch = %s ", ch[3]);
+
+	int ret = applypatch(4, ch);
+
+	__android_log_print(ANDROID_LOG_INFO, "ApkPatchLibrary", "applypatch result = %d ", ret);
+
+	(*env)->ReleaseStringUTFChars(env, old, ch[1]);
+	(*env)->ReleaseStringUTFChars(env, new, ch[2]);
+	(*env)->ReleaseStringUTFChars(env, patch, ch[3]);
+
+	return ret;
+}
+```
+
+#### 2.2 Java部分
+
+com.cundong.utils包，为调用C语言的Java实现；
+
+调用，`com.cundong.utils.PatchUtils中patch()`方法，可以通过旧apk与差分包，合成为新apk。
+
+```java
+/**
+ * 类说明： 	APK Patch工具类
+ * 
+ * @author 	Cundong
+ * @date 	2013-9-6
+ * @version 1.0
+ */
+public class PatchUtils {
+
+	/**
+	 * native方法 使用路径为oldApkPath的apk与路径为patchPath的补丁包，合成新的apk，并存储于     newApkPath
+	 * 
+	 * 返回：0，说明操作成功
+	 * 
+	 * @param oldApkPath 示例:/sdcard/old.apk
+	 * @param newApkPath 示例:/sdcard/new.apk
+	 * @param patchPath  示例:/sdcard/xx.patch
+	 * @return
+	 */
+	public static native int patch(String oldApkPath, String newApkPath,
+			String patchPath);
+}
+```
+
+### 3.校验新合成的apk文件
+
+新包和成之后，还需要对客户端合成的apk包与最新版本apk包进行MD5或SHA1校验，如果校验码不一致，说明合成过程有问题，新合成的包将不能被安装。
+
+## 注意事项
+
+增量更新的前提条件，是在手机客户端能让我们读取到当前应用程序安装后的源apk，如果获取不到源apk，那么就无法进行增量更新了。
+
+另外，如果你的应用程序不是很大，比如只有2、3M，那么完全没有必要使用增量更新，增量更新只适用于apk包比较大的情况，比如手机游戏客户端。
+
+## 一些说明
+
+各目录说明如下： 
+
+* ApkPatchLibraryServer：服务器端生成差分包工程，使用Java实现；
+
+* ApkPatchLibrary：客户端使用的apk合成库，用于生成libApkPatchLibrary.so；
+
+* ApkPatchLibraryDemo：一个Demo（需要引用ApkPatchLibrary Library），以新浪微博客户端的升级为例，手机上安装了V4.5.0，通过只下载差分包，增量更新至V4.5.5。 
+
+* ApkPatchLibraryDemo2：另一个Demo（不需要引用ApkPatchLibrary Library），直接将ApkPatchLibrary构建得到的 libApkPatchLibrary.so 文件拷贝到了 libs/armeabi 目录，实现微博客户端的增量更新。
+
+ApkPatchLibraryDemo、ApkPatchLibraryDemo2 中用到的V4.5.0版微博，V4.5.5版微博，以及两个版本微博的差分包，可以通过以下链接下载：
+
+* [旧版本微博V4.5.0][5]
+
+* [新版微博weiboV4.5.5][6]
+
+* [使用ApkPatchLibraryServer生成的新旧新浪微博差分包][7]
+
+## 关于我
+
+* Blog: [http://my.oschina.net/liucundong/blog][4]
+* Mail: cundong.liu#gmail.com
+
+## Update
+
+1.目前的做法只是提供了一个例子，并没有做成开源库，打算这几天改进一下，做成一个开源库，push到GitHub上，开发ing..（2014年，8月31日）
+
+2.已经大幅度重构原代码，并将原来的Demo程序提取成为开源库，欢迎所有人Watch、Star、Fork。（2014年，9月2日）
+
+3.修改ReadMe.md，更加清晰的说明开源库的使用，同时进一步重构代码。（2014年，10月4日晚）
+
+4.新增一个ApkPatchLibraryDemo2，无需引用ApkPatchLibrary Library。
+
+5.调整ApkPatchLibraryServer工程目录。（2015年，4月24日)
+
+6.上传[一个演示demo ApkPatchLibraryDemo.apk][8]。（2015-4-26）
+
+## License
+
+    Copyright 2015 Cundong
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+  [1]: http://developer.android.com/about/versions/jelly-bean.html
+  [2]: http://www.daemonology.net/bsdiff/
+  [3]: http://www.bzip.org/downloads.html
+  [4]: http://my.oschina.net/liucundong/blog
+  [5]: http://pan.baidu.com/s/1hqs1vaG
+  [6]: http://pan.baidu.com/s/1i3tLo6T
+  [7]: http://pan.baidu.com/s/1o6BSaoy
+  [8]: https://github.com/cundong/SmartAppUpdates/blob/master/ApkPatchLibraryDemo.apk
