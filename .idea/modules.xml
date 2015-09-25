@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/libs/ApkPatchLibrary/ApkPatchLibrary.iml" filepath="$PROJECT_DIR$/libs/ApkPatchLibrary/ApkPatchLibrary.iml" />
       <module fileurl="file://$PROJECT_DIR$/AppUpdata.iml" filepath="$PROJECT_DIR$/AppUpdata.iml" />
-      <module fileurl="file://$PROJECT_DIR$/libs/ApkPatchLibrary/apkpatchlibrary.iml" filepath="$PROJECT_DIR$/libs/ApkPatchLibrary/apkpatchlibrary.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/libs/libs.iml" filepath="$PROJECT_DIR$/libs/libs.iml" />
     </modules>
