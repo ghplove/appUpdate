@@ -310,40 +310,6 @@ ApkPatchLibraryDemo、ApkPatchLibraryDemo2 中用到的V4.5.0版微博，V4.5.5�
 
 * [使用ApkPatchLibraryServer生成的新旧新浪微博差分包][7]
 
-## 关于我
-
-* Blog: [http://my.oschina.net/liucundong/blog][4]
-* Mail: cundong.liu#gmail.com
-
-## Update
-
-1.目前的做法只是提供了一个例子，并没有做成开源库，打算这几天改进一下，做成一个开源库，push到GitHub上，开发ing..（2014年，8月31日）
-
-2.已经大幅度重构原代码，并将原来的Demo程序提取成为开源库，欢迎所有人Watch、Star、Fork。（2014年，9月2日）
-
-3.修改ReadMe.md，更加清晰的说明开源库的使用，同时进一步重构代码。（2014年，10月4日晚）
-
-4.新增一个ApkPatchLibraryDemo2，无需引用ApkPatchLibrary Library。
-
-5.调整ApkPatchLibraryServer工程目录。（2015年，4月24日)
-
-6.上传[一个演示demo ApkPatchLibraryDemo.apk][8]。（2015-4-26）
-
-## License
-
-    Copyright 2015 Cundong
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
 
   [1]: http://developer.android.com/about/versions/jelly-bean.html
   [2]: http://www.daemonology.net/bsdiff/
